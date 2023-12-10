@@ -5,7 +5,7 @@ from datasets import Dataset
 import tqdm
 
 from dual.typing import Tensor, LossFunction
-from dual.layer import Layer
+from dual.layer import Layer, Initialize
 from dual.gradient import Gradient
 
 
@@ -16,7 +16,7 @@ class NeuralNetwork:
         self.loss_function = loss_function
 
     def add_layer(
-        self, n_neurons: int, activation_function: t.Callable, initialize: str
+        self, n_neurons: int, activation_function: t.Callable, initialize: Initialize
     ) -> Layer:
         layer = Layer(
             model=self,

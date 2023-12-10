@@ -4,11 +4,10 @@ import numpy as np
 import numpy.typing as npt
 
 from dual.tensor import DualTensor
-from dual.typing import Tensor
-from dual.gradient import Gradient
 
-if t.TYPE_CHECKING:
-    from dual.neural_net import NeuralNetwork
+
+Tensor: t.TypeAlias = npt.NDArray[float] | DualTensor
+LossFunction: t.TypeAlias = t.Callable[[Tensor, Tensor], float]
 
 
 class Initialize(str, Enum):
@@ -63,40 +62,30 @@ class Layer:
         bias = bias if bias is not None else self.bias
         return self.activation_function(weights @ x + bias)
 
-    def push_forward(
-        self,
-        x: Tensor,
-        y: Tensor,
-        weights: Tensor | None = None,
-        bias: Tensor | None = None,
-    ) -> Tensor:
-        x = self.compute_activation(x=x, weights=weights, bias=bias)
-        if self.next_layer is not None:
-            return self.next_layer.push_forward(x=x, y=y)
 
-        return self.model.loss_function(x, y)
+class NeuralNetwork:
+    def __init__(self, input_size: int, loss_function: LossFunction) -> None:
+        self.layers: list[Layer] = []
+        self.input_size = input_size
+        self.loss_function = loss_function
 
-    def compute_gradient(self, x: Tensor, y: Tensor) -> Gradient:
-        weights_gradient = np.zeros_like(self.weights)
-        with np.nditer(self.weights, flags=["multi_index"]) as it:
-            for _ in it:
-                dual = np.zeros_like(self.weights)
-                dual[it.multi_index] = 1
-                dual_parameter = DualTensor(real=self.weights, dual=dual)
+    def add_layer(
+        self, n_neurons: int, activation_function: t.Callable, initialize: Initialize
+    ) -> Layer:
+        layer = Layer(
+            model=self,
+            n_neurons=n_neurons,
+            activation_function=activation_function,
+            initialize=initialize,
+        )
+        self.layers.append(layer)
+        return layer
 
-                weights_gradient[it.multi_index] = self.push_forward(
-                    x=x, y=y, weights=dual_parameter
-                ).dual
+    def __call__(self, x: Tensor) -> Tensor:
+        result = x
+        for layer in self.layers:
+            result = layer.compute_activation(x=result)
+        return result
 
-        bias_gradient = np.zeros_like(self.bias)
-        for i in range(self.n_neurons):
-            dual = np.zeros_like(self.bias)
-            dual[i] = 1
-            dual_parameter = DualTensor(real=self.bias, dual=dual)
-            bias_gradient[i] = self.push_forward(x=x, y=y, bias=dual_parameter).dual
-
-        return Gradient(weights=weights_gradient, bias=bias_gradient)
-
-    def update_parameters(self, gradient: Gradient, learning_rate: float) -> None:
-        self.weights = self.weights - learning_rate * gradient.weights
-        self.bias = self.bias - learning_rate * gradient.bias
+    def compute_loss(self, x: Tensor, y: Tensor) -> float:
+        return self.loss_function(self(x), y)
