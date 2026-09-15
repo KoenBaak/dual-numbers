@@ -57,7 +57,7 @@ class DualTensor:
         self,
         real: npt.ArrayLike | None = None,
         dual: npt.ArrayLike | None = None,
-        dtype: npt.DTypeLike = np.float_,
+        dtype: npt.DTypeLike = np.float64,
     ) -> None:
         assert real is not None or dual is not None
         assert np.dtype(dtype=dtype).kind == "f"
@@ -77,7 +77,7 @@ class DualTensor:
 
     @classmethod
     def with_dual_ones(
-        cls, real: npt.NDArray, dtype: npt.DTypeLike = np.float_
+        cls, real: npt.NDArray, dtype: npt.DTypeLike = np.float64
     ) -> "DualTensor":
         return DualTensor(real=real, dual=np.ones_like(real, dtype=dtype), dtype=dtype)
 
